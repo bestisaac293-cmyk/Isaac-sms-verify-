@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/api/twilio-webhook",
+      "source": "/api/test",
       "destination": "/api/twilio-webhook.js"
     }
   ]
