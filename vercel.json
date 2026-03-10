@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/twilio-webhook",
+      "destination": "/api/twilio-webhook.js"
+    }
+  ]
+}
