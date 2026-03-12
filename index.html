@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isaacs SMS Verify | Secure Number Marketplace</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #0066FF;
+            --secondary: #001f3f;
+            --bg: #F8FAFC;
+            --white: #ffffff;
+            --error: #FF4D4D;
+            --success: #2ecc71;
+            --border: #E2E8F0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color: #1e293b; line-height: 1.5; overflow-x: hidden; }
+
+        /* --- Global Loading Overlay --- */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.95); display: none;
+            justify-content: center; align-items: center; z-index: 10000;
+        }
+        .spinner {
+            width: 48px; height: 48px; border: 5px solid #E2E8F0;
+            border-top: 5px solid var(--primary); border-radius: 50%;
+            animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- Page Structures --- */
+        .page { display: none; padding: 20px; max-width: 480px; margin: 0 auto; min-height: 100vh; }
+        .page.active { display: block; animation: slideUp 0.4s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Auth Styles --- */
+        .auth-card { background: var(--white); padding: 32px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .intro-box { background: #F1F5F9; padding: 16px; border-radius: 12px; font-size: 14px; margin-bottom: 20px; }
+        .tab-switcher { display: flex; background: #F1F5F9; padding: 4px; border-radius: 12px; margin-bottom: 24px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; color: #64748b; background: transparent; }
+        .tab-btn.active { background: var(--white); color: var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        input, select { width: 100%; padding: 14px; margin-bottom: 12px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 15px; }
+        .btn-primary { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        .error-msg { color: var(--error); font-size: 13px; margin-bottom: 10px; display: none; text-align: center; }
+
+        /* --- Dashboard Styles --- */
+        .balance-card { background: linear-gradient(135deg, var(--secondary) 0%, #003366 100%); color: white; padding: 24px; border-radius: 20px; margin-bottom: 24px; }
+        
+        /* --- Country Selection Tab --- */
+        .country-tab-container { background: var(--white); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; margin-top: 15px; }
+        .select-country-header { padding: 18px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 700; color: var(--secondary); }
+        .country-dropdown-content { border-top: 1px solid #F1F5F9; max-height: 400px; overflow-y: auto; display: none; }
+        
+        .market-list { padding: 10px; }
+        .country-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #F1F5F9; }
+        #chevronIcon { transition: 0.3s; }
+        .rotate { transform: rotate(180deg); }
+
+        /* --- History Styles --- */
+        .history-section { margin-top: 30px; }
+        .history-card { background: var(--white); border-radius: 16px; border: 1px solid var(--border); max-height: 250px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <div id="loader"><div class="spinner"></div></div>
+
+    <div id="authPage" class="page active">
+        <div class="auth-card">
+            <h1 style="text-align:center; margin-bottom:15px;">Isaacs SMS Verify</h1>
+            <div class="intro-box">
+                "Welcome to Isaacs SMS Verify, your trusted partner in secure number verification 🌟. Need verified numbers? We've got you! 🚀"
+            </div>
+            <div class="tab-switcher">
+                <button class="tab-btn active" id="loginTab" onclick="toggleAuthMode('login')">Login</button>
+                <button class="tab-btn" id="signupTab" onclick="toggleAuthMode('signup')">Signup</button>
+            </div>
+            <div id="authError" class="error-msg"></div>
+            <div id="loginFields">
+                <input type="email" id="email" placeholder="Email Address">
+                <input type="password" id="password" placeholder="Password">
+                <button class="btn-primary" onclick="signIn()">Login</button>
+            </div>
+            <div id="signupFields" style="display:none;">
+                <input type="text" id="newName" placeholder="Full Name">
+                <input type="email" id="newEmail" placeholder="Real Email Address">
+                <input type="password" id="newPassword" placeholder="Create Password">
+                <button class="btn-primary" onclick="signUp()">Join Thousands of Users 💡</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashPage" class="page">
+        <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+            <h3 id="userNameDisplay">Welcome Back</h3>
+            <button onclick="logout()" style="border:none; background:none; color:var(--error); font-weight:700;">Logout</button>
+        </div>
+
+        <div class="balance-card">
+            <p style="font-size:14px; opacity:0.8;">Wallet Balance</p>
+            <h2 style="font-size:32px;">₦<span id="userBalance">0.00</span></h2>
+            <button onclick="nav('fundsPage')" style="background:white; color:var(--secondary); border:none; padding:8px 16px; border-radius:8px; font-weight:700; margin-top:12px; cursor:pointer;">+ Add Funds</button>
+        </div>
+
+        <label style="font-size: 14px; font-weight: 700; color: var(--secondary);">Target Platform</label>
+        <select id="platformSelect">
+            <option>Facebook</option><option>Instagram</option><option>Twitter</option>
+            <option>WhatsApp</option><option>Google</option><option>TikTok</option>
+            <option>Snapchat</option><option>Telegram</option><option>Other</option>
+        </select>
+
+        <div class="country-tab-container">
+            <div class="select-country-header" onclick="toggleCountryList()">
+                <span><i class="fa fa-globe"></i> Select Country</span>
+                <i class="fa fa-chevron-down" id="chevronIcon"></i>
+            </div>
+            <div id="countryDropdown" class="country-dropdown-content">
+                <div style="position: relative; padding: 10px;">
+                    <input type="text" id="countrySearch" placeholder="Search countries..." onkeyup="filterCountries()" style="padding-left: 35px; margin-bottom: 0;">
+                    <i class="fa fa-search" style="position: absolute; left: 22px; top: 22px; color: #94a3b8;"></i>
+                </div>
+                <div class="market-list" id="countryList"></div>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <h4 style="margin-bottom:10px;"><i class="fa fa-history"></i> Recent Orders</h4>
+            <div id="orderHistory" class="history-card">
+                <p style="padding:20px; text-align:center; color:#94a3b8; font-size:14px;">No orders yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="fundsPage" class="page">
+        <div class="auth-card">
+            <button onclick="nav('dashPage')" style="border:none; background:none; color:var(--primary); font-weight:700; margin-bottom:15px;"><i class="fa fa-arrow-left"></i> Back</button>
+            <h2>Fund Wallet 💳</h2>
+            <div style="border:2px dashed #ccc; padding:20px; border-radius:15px; margin:15px 0;">
+                <p>Bank: <strong>Moniepoint</strong></p>
+                <p>Account: <strong>8024383636</strong></p>
+                <p>Name: <strong>Modestus Obinga</strong></p>
+            </div>
+            <button class="btn-primary" style="background:#25D366;" onclick="openWhatsApp()">Send Proof on WhatsApp</button>
+        </div>
+    </div>
+
+    <script>
+        // 1. FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKMj6QlTFba-JJl-6YIGIDaTOFQNKSbFY",
+            authDomain: "isaacs-sms-verify.firebaseapp.com",
+            databaseURL: "https://isaacs-sms-verify-default-rtdb.firebaseio.com",
+            projectId: "isaacs-sms-verify",
+            storageBucket: "isaacs-sms-verify.appspot.com"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        // 2. COUNTRIES DATA
+        const countries = [
+            {n: "USA", c: "US", p: 1200}, {n: "UK", c: "GB", p: 1100}, {n: "Nigeria", c: "NG", p: 400},
+            {n: "Germany", c: "DE", p: 900}, {n: "Canada", c: "CA", p: 1150}, {n: "Ghana", c: "GH", p: 500}
+        ];
+
+        // 3. UI HELPERS
+        function triggerLoading(cb) {
+            const l = document.getElementById('loader');
+            l.style.display = 'flex';
+            setTimeout(() => { l.style.display = 'none'; if(cb) cb(); }, 1000);
+        }
+
+        function nav(id) { triggerLoading(() => { 
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        });}
+
+        function toggleAuthMode(m) {
+            document.getElementById('loginFields').style.display = (m==='login')?'block':'none';
+            document.getElementById('signupFields').style.display = (m==='signup')?'block':'none';
+            document.getElementById('loginTab').className = (m==='login')?'tab-btn active':'tab-btn';
+            document.getElementById('signupTab').className = (m==='signup')?'tab-btn active':'tab-btn';
+        }
+
+        function toggleCountryList() {
+            const d = document.getElementById('countryDropdown');
+            const c = document.getElementById('chevronIcon');
+            d.style.display = (d.style.display === "none" || !d.style.display) ? "block" : "none";
+            c.classList.toggle('rotate');
+        }
+
+        // 4. AUTH LOGIC
+        function signUp() {
+            const name = document.getElementById('newName').value;
+            const email = document.getElementById('newEmail').value;
+            const pass = document.getElementById('newPassword').value;
+            if(!email || !pass || !name) return alert("Fill all fields");
+            
+            triggerLoading(() => {
+                auth.createUserWithEmailAndPassword(email, pass).then((cred) => {
+                    db.ref('users/' + cred.user.uid).set({ fullName: name, email: email, balance: 0.00 });
+                }).catch(e => alert(e.message));
+            });
+        }
+
+        function signIn() {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            triggerLoading(() => {
+                auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Login Failed: Check credentials"));
+            });
+        }
+
+        function logout() { auth.signOut().then(() => nav('authPage')); }
+
+        // 5. MARKET LOGIC
+        function filterCountries() {
+            const q = document.getElementById('countrySearch').value.toLowerCase();
+            renderCountries(countries.filter(c => c.n.toLowerCase().includes(q)));
+        }
+
+        function renderCountries(list) {
+            document.getElementById('countryList').innerHTML = list.map(c => `
+                <div class="country-item">
+                    <div><strong>${c.c}</strong> - ${c.n}<br><span style="color:var(--primary); font-size:12px;">₦${c.p}</span></div>
+                    <button class="btn-primary" style="width:auto; padding:8px 12px; font-size:12px;" onclick="buyNumber('${c.n}', ${c.p})">Buy</button>
+                </div>
+            `).join('');
+        }
+
+        function buyNumber(name, price) {
+            const bal = parseFloat(document.getElementById('userBalance').innerText);
+            if (bal < price) return alert("Insufficient Balance! Please Add Funds.");
+            if (confirm(`Order ${name} for ₦${price}?`)) {
+                triggerLoading(() => {
+                    const uid = auth.currentUser.uid;
+                    db.ref('users/' + uid).update({ balance: bal - price });
+                    db.ref('transactions/' + uid).push({ item: name + " - " + document.getElementById('platformSelect').value, amount: price, date: new Date().toISOString() });
+                    alert("Order Placed! Please wait for your code.");
+                });
+            }
+        }
+
+        // 6. HISTORY & LISTENERS
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                db.ref('users/' + user.uid).on('value', (s) => {
+                    const d = s.val();
+                    if(d) {
+                        document.getElementById('userNameDisplay').innerText = "Hello, " + d.fullName.split(' ')[0] + " 👋";
+                        document.getElementById('userBalance').innerText = d.balance.toFixed(2);
+                        loadHistory(user.uid);
+                        nav('dashPage');
+                    }
+                });
+            }
+        });
+
+        function loadHistory(uid) {
+            db.ref('transactions/' + uid).orderByChild('date').limitToLast(5).on('value', (s) => {
+                const orders = []; s.forEach(c => orders.unshift(c.val()));
+                if(orders.length) {
+                    document.getElementById('orderHistory').innerHTML = orders.map(o => `
+                        <div class="country-item">
+                            <div><strong>${o.item}</strong><br><small>${new Date(o.date).toLocaleDateString()}</small></div>
+                            <div style="color:var(--error); font-weight:700;">-₦${o.amount}</div>
+                        </div>
+                    `).join('');
+                }
+            });
+        }
+
+        function openWhatsApp() { window.open("https://wa.me/2348024383636?text=Payment Proof: " + auth.currentUser.email); }
+
+        renderCountries(countries);
+    </script>
+</body>
+</html>
