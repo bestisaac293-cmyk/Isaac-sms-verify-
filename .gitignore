@@ -1,0 +1,26 @@
+# --- Sensitive Credentials ---
+# Never, ever commit these!
+serviceAccountKey.json
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+
+# --- Dependencies & Build Folders ---
+# These are re-generated or downloaded, so we don't track them.
+node_modules/
+dist/
+build/
+.firebase/
+
+# --- Logs & Debug Files ---
+*.log
+firebase-debug.log
+npm-debug.log*
+
+# --- OS Generated Files ---
+.DS_Store
+Thumbs.db
