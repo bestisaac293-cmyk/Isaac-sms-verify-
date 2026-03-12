@@ -6,7 +6,7 @@ export default async function handler(req, res) {
 
     // 2. Security: Get your API Key from Vercel Environment Variables
     // The key is stored in Vercel Settings, not in this file!
-    const API_KEY = SMS_API_KEY;
+    const API_KEY = process.env.SMS_API_KEY;
 
     if (!API_KEY) {
         return res.status(500).json({ error: "API Key not configured on server" });
